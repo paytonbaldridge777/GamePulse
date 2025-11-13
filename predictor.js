@@ -53,17 +53,152 @@ function hideLoadingState() {
 
 // Update data source indicator
 function updateDataSourceIndicator() {
-    const source = getDataSource();
+    const dataInfo = getDataSourceInfo();
+    const source = dataInfo.source;
     const indicator = document.getElementById('dataSourceIndicator');
+    
     if (indicator) {
         if (source === 'api') {
             indicator.innerHTML = '✅ Using live API data';
             indicator.className = 'data-source api-data';
+            console.log('[UI] Data source indicator: Live API data');
         } else {
-            indicator.innerHTML = '📊 Using static fallback data';
+            indicator.innerHTML = '📊 Using static fallback data - <a href="#" id="showErrorDetails" style="color: inherit; text-decoration: underline;">Why?</a>';
             indicator.className = 'data-source static-data';
+            console.log('[UI] Data source indicator: Static fallback data');
+            
+            // Add click handler to show error details
+            setTimeout(() => {
+                const showErrorLink = document.getElementById('showErrorDetails');
+                if (showErrorLink) {
+                    showErrorLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showErrorDetailsPanel(dataInfo);
+                    });
+                }
+            }, 0);
         }
     }
+}
+
+// Show detailed error information panel
+function showErrorDetailsPanel(dataInfo) {
+    // Remove existing panel if present
+    const existingPanel = document.getElementById('errorDetailsPanel');
+    if (existingPanel) {
+        existingPanel.remove();
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'errorDetailsPanel';
+    panel.className = 'error-details-panel';
+    
+    let errorHtml = `
+        <div class="error-panel-header">
+            <h3>⚠️ Why is the app using static fallback data?</h3>
+            <button id="closeErrorPanel" class="close-btn">&times;</button>
+        </div>
+        <div class="error-panel-content">
+            <p><strong>Status:</strong> Unable to fetch live data from sports APIs</p>
+    `;
+
+    // Add error summary if available
+    if (dataInfo.errorSummary) {
+        const summary = dataInfo.errorSummary;
+        const guidance = summary.guidance;
+        
+        errorHtml += `
+            <div class="error-section">
+                <p><strong>📊 Error Summary:</strong></p>
+                <ul>
+                    <li>Total errors encountered: ${summary.totalErrors}</li>
+                    <li>Most common issue: ${summary.mostCommonError}</li>
+                </ul>
+            </div>
+
+            <div class="error-section">
+                <p><strong>❌ Issue:</strong> ${guidance.message}</p>
+            </div>
+
+            <div class="error-section">
+                <p><strong>🔍 Possible Reasons:</strong></p>
+                <ul>
+                    ${guidance.reasons.map(reason => `<li>${reason}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div class="error-section">
+                <p><strong>💡 Suggested Solutions:</strong></p>
+                <ol>
+                    ${guidance.solutions.map(solution => `<li>${solution}</li>`).join('')}
+                </ol>
+            </div>
+        `;
+
+        // Add recent errors for debugging
+        if (summary.recentErrors && summary.recentErrors.length > 0) {
+            errorHtml += `
+                <div class="error-section">
+                    <p><strong>🐛 Technical Details (for debugging):</strong></p>
+                    <details>
+                        <summary>Show recent errors</summary>
+                        <pre style="font-size: 11px; overflow-x: auto; background: #f5f5f5; padding: 10px; border-radius: 4px;">${JSON.stringify(summary.recentErrors, null, 2)}</pre>
+                    </details>
+                </div>
+            `;
+        }
+    } else if (dataInfo.loadError) {
+        errorHtml += `
+            <div class="error-section">
+                <p><strong>Error:</strong> ${dataInfo.loadError}</p>
+            </div>
+        `;
+    }
+
+    errorHtml += `
+            <div class="error-section">
+                <p><strong>✅ Current Status:</strong></p>
+                <p>The app is working with static team data (${dataInfo.totalTeams} teams). 
+                Predictions will still work, but the data may not reflect the most recent games.</p>
+            </div>
+
+            <div class="error-actions">
+                <button id="openConsoleBtn" class="action-btn">Open Browser Console</button>
+                <button id="tryRefreshBtn" class="action-btn primary">Try Refreshing Data</button>
+            </div>
+        </div>
+    `;
+
+    panel.innerHTML = errorHtml;
+    document.body.appendChild(panel);
+
+    // Add event listeners
+    document.getElementById('closeErrorPanel').addEventListener('click', () => {
+        panel.remove();
+    });
+
+    document.getElementById('openConsoleBtn').addEventListener('click', () => {
+        console.log('\n=== DIAGNOSTIC INFORMATION ===');
+        console.log('Data Source Info:', dataInfo);
+        if (typeof apiClient !== 'undefined') {
+            console.log('API Client Error Summary:', apiClient.getErrorSummary());
+        }
+        console.log('Instructions: Look for errors above marked with ❌ or ⚠️');
+        console.log('=== END DIAGNOSTIC INFORMATION ===\n');
+        alert('Check the browser console (F12) for detailed diagnostic information');
+    });
+
+    document.getElementById('tryRefreshBtn').addEventListener('click', () => {
+        panel.remove();
+        refreshData();
+    });
+
+    // Close on outside click
+    panel.addEventListener('click', (e) => {
+        if (e.target === panel) {
+            panel.remove();
+        }
+    });
 }
 
 // Refresh data from APIs
