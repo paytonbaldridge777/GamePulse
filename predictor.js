@@ -136,6 +136,13 @@ function calculateStreakImpact(streak) {
     return Math.max(-maxImpact, Math.min(maxImpact, streak * baseImpact));
 }
 
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Display prediction results
 function displayResults(team1Name, team2Name, prediction) {
     // Update team names
@@ -162,12 +169,16 @@ function generateAnalysis(team1Name, team2Name, prediction) {
     const team1Data = teamsData[team1Name];
     const team2Data = teamsData[team2Name];
     
+    // Escape team names for safe HTML insertion
+    const team1Escaped = escapeHtml(team1Name);
+    const team2Escaped = escapeHtml(team2Name);
+    
     let winner, winnerProb;
     if (prediction.team1Score > prediction.team2Score) {
-        winner = team1Name;
+        winner = team1Escaped;
         winnerProb = prediction.team1WinProb;
     } else if (prediction.team2Score > prediction.team1Score) {
-        winner = team2Name;
+        winner = team2Escaped;
         winnerProb = prediction.team2WinProb;
     } else {
         winner = "Neither (Tie)";
@@ -186,19 +197,19 @@ function generateAnalysis(team1Name, team2Name, prediction) {
             <span><strong>${margin}</strong> points</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">${team1Name} Record:</span>
+            <span class="stat-label">${team1Escaped} Record:</span>
             <span>${team1Data.wins}-${team1Data.losses} (${team1Data.ppg.toFixed(1)} PPG, ${team1Data.papg.toFixed(1)} PAPG)</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">${team2Name} Record:</span>
+            <span class="stat-label">${team2Escaped} Record:</span>
             <span>${team2Data.wins}-${team2Data.losses} (${team2Data.ppg.toFixed(1)} PPG, ${team2Data.papg.toFixed(1)} PAPG)</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">${team1Name} Current Streak:</span>
+            <span class="stat-label">${team1Escaped} Current Streak:</span>
             <span>${formatStreak(team1Data.streak)}</span>
         </div>
         <div class="stat-row">
-            <span class="stat-label">${team2Name} Current Streak:</span>
+            <span class="stat-label">${team2Escaped} Current Streak:</span>
             <span>${formatStreak(team2Data.streak)}</span>
         </div>
     `;
