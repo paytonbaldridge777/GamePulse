@@ -1,11 +1,99 @@
 // GamePulse Score Predictor Logic
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Show loading state
+    showLoadingState();
+    
+    // Try to load data from APIs
+    try {
+        await loadTeamsDataFromAPIs();
+    } catch (error) {
+        console.error('Failed to load API data:', error);
+    }
+    
+    // Populate selectors with available data
     populateTeamSelectors();
     
+    // Hide loading state
+    hideLoadingState();
+    
+    // Show data source indicator
+    updateDataSourceIndicator();
+    
     document.getElementById('predictBtn').addEventListener('click', predictScore);
+    
+    // Add refresh button handler if it exists
+    const refreshBtn = document.getElementById('refreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshData);
+    }
 });
+
+// Show loading state
+function showLoadingState() {
+    const container = document.querySelector('.container');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loadingState';
+    loadingDiv.className = 'loading-state';
+    loadingDiv.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p>Loading team data from sports APIs...</p>
+    `;
+    container.insertBefore(loadingDiv, container.firstChild);
+}
+
+// Hide loading state
+function hideLoadingState() {
+    const loadingDiv = document.getElementById('loadingState');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
+}
+
+// Update data source indicator
+function updateDataSourceIndicator() {
+    const source = getDataSource();
+    const indicator = document.getElementById('dataSourceIndicator');
+    if (indicator) {
+        if (source === 'api') {
+            indicator.innerHTML = '✅ Using live API data';
+            indicator.className = 'data-source api-data';
+        } else {
+            indicator.innerHTML = '📊 Using static fallback data';
+            indicator.className = 'data-source static-data';
+        }
+    }
+}
+
+// Refresh data from APIs
+async function refreshData() {
+    const refreshBtn = document.getElementById('refreshDataBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = 'Refreshing...';
+    }
+    
+    showLoadingState();
+    
+    try {
+        await refreshTeamsData();
+        populateTeamSelectors();
+        updateDataSourceIndicator();
+        
+        // Show success message
+        alert('Team data refreshed successfully!');
+    } catch (error) {
+        console.error('Error refreshing data:', error);
+        alert('Failed to refresh data. Using cached data.');
+    } finally {
+        hideLoadingState();
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Refresh Data';
+        }
+    }
+}
 
 // Populate team dropdowns with available teams
 function populateTeamSelectors() {

@@ -1,7 +1,9 @@
 // College Football Teams Data with Statistics
 // Data includes: Win-Loss record, Points Per Game (PPG), Points Allowed Per Game (PAPG), and Current Streak
+// This file provides static fallback data and dynamic data loading from APIs
 
-const teamsData = {
+// Static fallback data (used when APIs are unavailable)
+const staticTeamsData = {
     "Alabama": {
         wins: 10,
         losses: 2,
@@ -243,3 +245,70 @@ const teamsData = {
         strength: 79
     }
 };
+
+// Dynamic teams data that will be populated from APIs
+let teamsData = { ...staticTeamsData };
+let isLoadingData = false;
+let dataLoadError = null;
+
+// Load team data from APIs
+async function loadTeamsDataFromAPIs() {
+    if (isLoadingData) {
+        return; // Already loading
+    }
+
+    isLoadingData = true;
+    dataLoadError = null;
+
+    try {
+        console.log('Attempting to load team data from sports APIs...');
+        
+        // Check if apiClient is available
+        if (typeof apiClient === 'undefined') {
+            throw new Error('API client not loaded');
+        }
+
+        const apiData = await apiClient.buildTeamData();
+        
+        if (apiData && Object.keys(apiData).length > 0) {
+            // Merge API data with static data
+            // Prefer API data, but keep static data for teams not in API
+            teamsData = { ...staticTeamsData };
+            
+            // Update with API data
+            Object.keys(apiData).forEach(teamName => {
+                teamsData[teamName] = apiData[teamName];
+            });
+            
+            console.log(`Successfully loaded data for ${Object.keys(apiData).length} teams from APIs`);
+            return true;
+        } else {
+            console.warn('No data received from APIs, using static fallback data');
+            teamsData = { ...staticTeamsData };
+            return false;
+        }
+    } catch (error) {
+        console.error('Error loading data from APIs:', error);
+        dataLoadError = error.message;
+        teamsData = { ...staticTeamsData };
+        return false;
+    } finally {
+        isLoadingData = false;
+    }
+}
+
+// Get current data source
+function getDataSource() {
+    if (JSON.stringify(teamsData) === JSON.stringify(staticTeamsData)) {
+        return 'static';
+    }
+    return 'api';
+}
+
+// Refresh data from APIs
+async function refreshTeamsData() {
+    if (typeof apiClient !== 'undefined') {
+        apiClient.clearCache();
+    }
+    return await loadTeamsDataFromAPIs();
+}
