@@ -165,12 +165,12 @@ const staticTeamsData = {
         strength: 85
     },
     "Texas A&M": {
-        wins: 7,
-        losses: 5,
+        wins: 9,
+        losses: 0,
         ppg: 30.1,
         papg: 25.3,
-        streak: -1,
-        strength: 81
+        streak: 9,
+        strength: 91
     },
     "Utah": {
         wins: 9,

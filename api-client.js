@@ -495,6 +495,22 @@ class SportsAPIClient {
                     recordsByTeam[record.team] = record;
                 });
                 console.log(`   - Processed records for ${Object.keys(recordsByTeam).length} teams`);
+                
+                // Debug: Show a sample record structure and check for Texas A&M
+                if (records.length > 0) {
+                    const sampleTeam = records[0];
+                    console.log('   - Sample record structure:', {
+                        team: sampleTeam.team,
+                        availableProperties: Object.keys(sampleTeam),
+                        sampleData: sampleTeam
+                    });
+                }
+                
+                // Check specifically for Texas A&M
+                const tamRecord = records.find(r => r.team && (r.team.includes('A&M') || r.team === 'Texas A&M'));
+                if (tamRecord) {
+                    console.log('   - 🔍 Texas A&M record found in API response:', JSON.stringify(tamRecord, null, 2));
+                }
             } else {
                 console.warn('   - ⚠️ No records data available, using defaults');
             }
@@ -519,11 +535,41 @@ class SportsAPIClient {
                 if (offensiveStats) ppg = parseFloat(offensiveStats.statValue) || ppg;
                 if (defensiveStats) papg = parseFloat(defensiveStats.statValue) || papg;
 
-                // Get record
+                // Get record - try multiple possible API response structures
                 let wins = 8, losses = 4;
                 if (teamRecord) {
-                    wins = teamRecord.total?.wins || wins;
-                    losses = teamRecord.total?.losses || losses;
+                    // Log the structure for debugging (first time only for efficiency)
+                    if (teamsProcessed === 0) {
+                        console.log('   - Sample record structure for debugging:', JSON.stringify(teamRecord, null, 2));
+                    }
+                    
+                    // Try different possible property paths based on API documentation
+                    // The CollegeFootballData API may return data in various formats
+                    if (teamRecord.total && (teamRecord.total.wins !== undefined || teamRecord.total.losses !== undefined)) {
+                        // Format 1: { total: { wins: X, losses: Y } }
+                        wins = teamRecord.total.wins ?? wins;
+                        losses = teamRecord.total.losses ?? losses;
+                    } else if (teamRecord.overall && (teamRecord.overall.wins !== undefined || teamRecord.overall.losses !== undefined)) {
+                        // Format 2: { overall: { wins: X, losses: Y } }
+                        wins = teamRecord.overall.wins ?? wins;
+                        losses = teamRecord.overall.losses ?? losses;
+                    } else if (teamRecord.wins !== undefined || teamRecord.losses !== undefined) {
+                        // Format 3: { wins: X, losses: Y } (direct properties)
+                        wins = teamRecord.wins ?? wins;
+                        losses = teamRecord.losses ?? losses;
+                    } else {
+                        // No recognized format, log warning for debugging
+                        console.warn(`   - ⚠️ Unrecognized record format for ${teamName}:`, teamRecord);
+                    }
+                    
+                    // Additional debug logging for specific team
+                    if (teamName.includes('A&M') || teamName.includes('Texas A&M')) {
+                        console.log(`   - 🔍 DEBUG: ${teamName} record parsed as ${wins}-${losses}`, {
+                            rawRecord: teamRecord,
+                            extractedWins: wins,
+                            extractedLosses: losses
+                        });
+                    }
                 }
 
                 // Calculate streak
