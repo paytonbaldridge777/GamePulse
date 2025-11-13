@@ -2,7 +2,7 @@
 // Integrates multiple sports APIs for college football data
 
 const API_CONFIG = {
-    // CollegeFootballData API - Free, no API key required for basic usage
+    // CollegeFootballData API - Requires API key with Bearer authentication
     CFBD: {
         baseUrl: 'https://api.collegefootballdata.com',
         apiKey: '7PlBbXRmXCeYfBcdvwt6FvukW9FuK8CIiqIDNMsVCZYTGJs9NtKbaqW4SXKhH4SF',

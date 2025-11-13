@@ -68,14 +68,14 @@ The application integrates with the following sports data APIs:
   - `/stats/season` - Season statistics (PPG, PAPG)
   - `/records` - Team win-loss records
   - `/games` - Game results for calculating streaks
-- **Authentication**: No API key required for basic usage
+- **Authentication**: API key required (Bearer token authentication)
 - **Rate Limiting**: Cached for 1 hour to minimize requests
 
 ### TheSportsDB API
 - **Purpose**: Backup data source for team information
 - **Endpoints Used**:
   - `/search_all_teams.php?l=NCAA` - NCAA team data
-- **Authentication**: Free tier (API key: 3)
+- **Authentication**: Free tier (API key: 123)
 - **Rate Limiting**: Cached for 1 hour
 
 ### Fallback Mechanism
