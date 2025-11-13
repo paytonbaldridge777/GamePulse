@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GamePulse - College Football Score Predictor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏈 GamePulse</h1>
+            <p class="subtitle">College Football Score Predictor</p>
+        </header>
+
+        <div class="prediction-form">
+            <div class="team-selector">
+                <div class="team-input">
+                    <label for="team1">Team 1:</label>
+                    <select id="team1" required>
+                        <option value="">Select a team...</option>
+                    </select>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="team-input">
+                    <label for="team2">Team 2:</label>
+                    <select id="team2" required>
+                        <option value="">Select a team...</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="predictBtn" class="predict-btn">Predict Score</button>
+        </div>
+
+        <div id="results" class="results hidden">
+            <h2>Prediction Results</h2>
+            <div class="score-display">
+                <div class="team-score">
+                    <h3 id="team1Name">Team 1</h3>
+                    <div class="score" id="team1Score">0</div>
+                </div>
+                <div class="score-separator">-</div>
+                <div class="team-score">
+                    <h3 id="team2Name">Team 2</h3>
+                    <div class="score" id="team2Score">0</div>
+                </div>
+            </div>
+            <div class="prediction-details">
+                <h3>Prediction Analysis</h3>
+                <div id="analysisContent"></div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>How It Works</h3>
+            <p>Our prediction model analyzes multiple factors including:</p>
+            <ul>
+                <li><strong>Win-Loss Record:</strong> Overall team performance</li>
+                <li><strong>Offensive Strength:</strong> Average points per game</li>
+                <li><strong>Defensive Strength:</strong> Average points allowed per game</li>
+                <li><strong>Recent Form:</strong> Current win/loss streak</li>
+                <li><strong>Home/Away Performance:</strong> Team consistency</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="teams-data.js"></script>
+    <script src="predictor.js"></script>
+</body>
+</html>
