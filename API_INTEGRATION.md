@@ -11,9 +11,9 @@ This document describes the sports API integration implemented in GamePulse for 
 **Base URL**: `https://api.collegefootballdata.com`
 
 #### Authentication
-- No API key required for basic usage
+- API key required for access
+- Authentication via Bearer token in Authorization header
 - Rate limits apply (check API documentation for current limits)
-- Consider registering for an API key for higher rate limits
 
 #### Endpoints Used
 | Endpoint | Purpose | Parameters |
@@ -28,7 +28,8 @@ This document describes the sports API integration implemented in GamePulse for 
 fetch('https://api.collegefootballdata.com/teams/fbs?year=2024', {
     method: 'GET',
     headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY'
     }
 })
 ```
@@ -39,7 +40,7 @@ fetch('https://api.collegefootballdata.com/teams/fbs?year=2024', {
 **Base URL**: `https://www.thesportsdb.com/api/v1/json`
 
 #### Authentication
-- Free tier available (API key: 3)
+- Free tier available (API key: 123)
 - Paid tiers offer more features and higher limits
 - Patreon supporters get enhanced API keys
 
@@ -50,7 +51,7 @@ fetch('https://api.collegefootballdata.com/teams/fbs?year=2024', {
 
 #### Sample Request
 ```javascript
-fetch('https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=NCAA', {
+fetch('https://www.thesportsdb.com/api/v1/json/123/search_all_teams.php?l=NCAA', {
     method: 'GET',
     headers: {
         'Accept': 'application/json'

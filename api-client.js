@@ -2,16 +2,17 @@
 // Integrates multiple sports APIs for college football data
 
 const API_CONFIG = {
-    // CollegeFootballData API - Free, no API key required for basic usage
+    // CollegeFootballData API - Requires API key with Bearer authentication
     CFBD: {
         baseUrl: 'https://api.collegefootballdata.com',
+        apiKey: '7PlBbXRmXCeYfBcdvwt6FvukW9FuK8CIiqIDNMsVCZYTGJs9NtKbaqW4SXKhH4SF',
         enabled: true,
-        requiresAuth: false
+        requiresAuth: true
     },
     // TheSportsDB API - Free tier available
     SPORTSDB: {
         baseUrl: 'https://www.thesportsdb.com/api/v1/json',
-        apiKey: '3', // Free tier key
+        apiKey: '123', // Free tier key
         enabled: true,
         requiresAuth: false
     },
@@ -192,7 +193,8 @@ class SportsAPIClient {
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${API_CONFIG.CFBD.apiKey}`
                 }
             });
             
