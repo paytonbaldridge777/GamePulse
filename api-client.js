@@ -28,13 +28,166 @@ class SportsAPIClient {
         this.cache = {};
         this.cacheTimeout = 3600000; // 1 hour in milliseconds
         this.currentYear = new Date().getFullYear();
+        this.errorLog = []; // Track all errors for debugging
+        this.lastErrorDetails = null; // Store detailed info about last error
+    }
+
+    // Log errors with detailed context
+    logError(context, error, additionalInfo = {}) {
+        const errorEntry = {
+            timestamp: new Date().toISOString(),
+            context,
+            error: error.message,
+            errorType: this.categorizeError(error),
+            ...additionalInfo
+        };
+        
+        this.errorLog.push(errorEntry);
+        this.lastErrorDetails = errorEntry;
+        
+        // Keep only last 50 errors
+        if (this.errorLog.length > 50) {
+            this.errorLog.shift();
+        }
+        
+        console.error(`[API Error - ${context}]`, {
+            message: error.message,
+            type: errorEntry.errorType,
+            ...additionalInfo
+        });
+        
+        return errorEntry;
+    }
+
+    // Categorize errors to provide better troubleshooting
+    categorizeError(error) {
+        const message = error.message.toLowerCase();
+        
+        if (message.includes('failed to fetch')) {
+            return 'NETWORK_ERROR';
+        } else if (message.includes('cors')) {
+            return 'CORS_ERROR';
+        } else if (message.includes('timeout')) {
+            return 'TIMEOUT_ERROR';
+        } else if (message.includes('404')) {
+            return 'NOT_FOUND';
+        } else if (message.includes('403') || message.includes('401')) {
+            return 'AUTH_ERROR';
+        } else if (message.includes('429')) {
+            return 'RATE_LIMIT';
+        } else if (message.includes('500') || message.includes('502') || message.includes('503')) {
+            return 'SERVER_ERROR';
+        } else {
+            return 'UNKNOWN_ERROR';
+        }
+    }
+
+    // Get user-friendly error message and solutions
+    getErrorGuidance(errorType) {
+        const guidance = {
+            'NETWORK_ERROR': {
+                message: 'Network request blocked or failed',
+                reasons: [
+                    'Ad blocker or browser extension blocking the request',
+                    'Network connectivity issues',
+                    'Firewall or security software blocking requests'
+                ],
+                solutions: [
+                    'Disable ad blockers for this site',
+                    'Check your internet connection',
+                    'Try a different browser',
+                    'Check browser console for detailed errors'
+                ]
+            },
+            'CORS_ERROR': {
+                message: 'Cross-origin request blocked',
+                reasons: [
+                    'API does not allow requests from this domain',
+                    'Browser security policy blocking the request'
+                ],
+                solutions: [
+                    'API may need to be accessed through a proxy',
+                    'Contact the API provider about CORS settings'
+                ]
+            },
+            'TIMEOUT_ERROR': {
+                message: 'Request timed out',
+                reasons: [
+                    'API server is slow to respond',
+                    'Network latency is too high'
+                ],
+                solutions: [
+                    'Try again in a few moments',
+                    'Check API status page'
+                ]
+            },
+            'RATE_LIMIT': {
+                message: 'API rate limit exceeded',
+                reasons: [
+                    'Too many requests made in a short time'
+                ],
+                solutions: [
+                    'Wait a few minutes before refreshing',
+                    'Data is cached for 1 hour to prevent this'
+                ]
+            },
+            'AUTH_ERROR': {
+                message: 'Authentication failed',
+                reasons: [
+                    'API key is invalid or expired',
+                    'API requires authentication'
+                ],
+                solutions: [
+                    'Check API configuration',
+                    'Verify API key is valid'
+                ]
+            },
+            'SERVER_ERROR': {
+                message: 'API server error',
+                reasons: [
+                    'API server is experiencing issues',
+                    'API endpoint may be down'
+                ],
+                solutions: [
+                    'Try again later',
+                    'Check API status page',
+                    'Using cached or fallback data'
+                ]
+            },
+            'NOT_FOUND': {
+                message: 'API endpoint not found',
+                reasons: [
+                    'API endpoint URL is incorrect',
+                    'API version may have changed'
+                ],
+                solutions: [
+                    'Check API documentation',
+                    'Verify endpoint URLs are correct'
+                ]
+            },
+            'UNKNOWN_ERROR': {
+                message: 'Unknown error occurred',
+                reasons: [
+                    'Unexpected error type'
+                ],
+                solutions: [
+                    'Check browser console for details',
+                    'Try refreshing the page'
+                ]
+            }
+        };
+        
+        return guidance[errorType] || guidance['UNKNOWN_ERROR'];
     }
 
     // Fetch data from CollegeFootballData API
     async fetchFromCFBD(endpoint, params = {}) {
+        const startTime = Date.now();
         try {
             const url = new URL(`${API_CONFIG.CFBD.baseUrl}${endpoint}`);
             Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            
+            console.log(`[CFBD API] Fetching: ${endpoint}`, params);
             
             const response = await fetch(url, {
                 method: 'GET',
@@ -44,20 +197,43 @@ class SportsAPIClient {
             });
             
             if (!response.ok) {
-                throw new Error(`CFBD API error: ${response.status}`);
+                const error = new Error(`CFBD API error: ${response.status} ${response.statusText}`);
+                this.logError('CFBD API Response Error', error, {
+                    endpoint,
+                    params,
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: url.toString(),
+                    duration: Date.now() - startTime
+                });
+                return null;
             }
             
-            return await response.json();
+            const data = await response.json();
+            console.log(`[CFBD API] Success: ${endpoint} (${Date.now() - startTime}ms)`, 
+                        `Returned ${Array.isArray(data) ? data.length : 'N/A'} items`);
+            return data;
         } catch (error) {
-            console.error('CFBD API fetch error:', error);
+            this.logError('CFBD API Fetch Error', error, {
+                endpoint,
+                params,
+                url: `${API_CONFIG.CFBD.baseUrl}${endpoint}`,
+                duration: Date.now() - startTime,
+                possibleCauses: error.message.includes('Failed to fetch') 
+                    ? 'Network blocked, CORS issue, or ad blocker' 
+                    : 'Unknown error'
+            });
             return null;
         }
     }
 
     // Fetch data from TheSportsDB API
     async fetchFromSportsDB(endpoint) {
+        const startTime = Date.now();
         try {
             const url = `${API_CONFIG.SPORTSDB.baseUrl}/${API_CONFIG.SPORTSDB.apiKey}${endpoint}`;
+            
+            console.log(`[SportsDB API] Fetching: ${endpoint}`);
             
             const response = await fetch(url, {
                 method: 'GET',
@@ -67,12 +243,29 @@ class SportsAPIClient {
             });
             
             if (!response.ok) {
-                throw new Error(`SportsDB API error: ${response.status}`);
+                const error = new Error(`SportsDB API error: ${response.status} ${response.statusText}`);
+                this.logError('SportsDB API Response Error', error, {
+                    endpoint,
+                    status: response.status,
+                    statusText: response.statusText,
+                    url,
+                    duration: Date.now() - startTime
+                });
+                return null;
             }
             
-            return await response.json();
+            const data = await response.json();
+            console.log(`[SportsDB API] Success: ${endpoint} (${Date.now() - startTime}ms)`);
+            return data;
         } catch (error) {
-            console.error('SportsDB API fetch error:', error);
+            this.logError('SportsDB API Fetch Error', error, {
+                endpoint,
+                url: `${API_CONFIG.SPORTSDB.baseUrl}/${API_CONFIG.SPORTSDB.apiKey}${endpoint}`,
+                duration: Date.now() - startTime,
+                possibleCauses: error.message.includes('Failed to fetch') 
+                    ? 'Network blocked, CORS issue, or ad blocker' 
+                    : 'Unknown error'
+            });
             return null;
         }
     }
@@ -240,8 +433,11 @@ class SportsAPIClient {
 
     // Build comprehensive team data from multiple API sources
     async buildTeamData() {
+        console.log('=== Starting Team Data Build Process ===');
+        const buildStartTime = Date.now();
+        
         try {
-            console.log('Fetching team data from APIs...');
+            console.log('[Step 1/4] Fetching team data from APIs...');
             
             // Fetch all necessary data
             const [teams, stats, records, games] = await Promise.all([
@@ -251,11 +447,29 @@ class SportsAPIClient {
                 this.getGames()
             ]);
 
+            // Log what we got back
+            console.log('[Step 2/4] API Response Summary:', {
+                teams: teams ? `✓ ${Array.isArray(teams) ? teams.length : 'N/A'} teams` : '✗ Failed',
+                stats: stats ? `✓ ${Array.isArray(stats) ? stats.length : 'N/A'} stats` : '✗ Failed',
+                records: records ? `✓ ${Array.isArray(records) ? records.length : 'N/A'} records` : '✗ Failed',
+                games: games ? `✓ ${Array.isArray(games) ? games.length : 'N/A'} games` : '✗ Failed'
+            });
+
             if (!teams) {
-                console.warn('No team data available from APIs');
+                console.warn('❌ [Step 3/4] No team data available from APIs');
+                console.warn('⚠️ FALLBACK TRIGGER: No teams data received from any API');
+                console.warn('💡 Troubleshooting Tips:');
+                if (this.lastErrorDetails) {
+                    const guidance = this.getErrorGuidance(this.lastErrorDetails.errorType);
+                    console.warn('   Error Type:', this.lastErrorDetails.errorType);
+                    console.warn('   Message:', guidance.message);
+                    console.warn('   Possible Reasons:', guidance.reasons);
+                    console.warn('   Suggested Solutions:', guidance.solutions);
+                }
                 return null;
             }
 
+            console.log('[Step 3/4] Processing team data...');
             const teamData = {};
 
             // Process stats by team
@@ -267,6 +481,9 @@ class SportsAPIClient {
                     }
                     statsByTeam[stat.team].push(stat);
                 });
+                console.log(`   - Processed stats for ${Object.keys(statsByTeam).length} teams`);
+            } else {
+                console.warn('   - ⚠️ No stats data available, using defaults');
             }
 
             // Process records by team
@@ -275,9 +492,13 @@ class SportsAPIClient {
                 records.forEach(record => {
                     recordsByTeam[record.team] = record;
                 });
+                console.log(`   - Processed records for ${Object.keys(recordsByTeam).length} teams`);
+            } else {
+                console.warn('   - ⚠️ No records data available, using defaults');
             }
 
             // Build team data objects
+            let teamsProcessed = 0;
             teams.forEach(team => {
                 const teamName = team.school || team.strTeam;
                 if (!teamName) return;
@@ -322,13 +543,22 @@ class SportsAPIClient {
                     streak,
                     strength: Math.max(70, Math.min(100, strength))
                 };
+                teamsProcessed++;
             });
 
-            console.log(`Built data for ${Object.keys(teamData).length} teams from APIs`);
+            const buildDuration = Date.now() - buildStartTime;
+            console.log(`[Step 4/4] ✅ Successfully built data for ${teamsProcessed} teams from APIs (${buildDuration}ms)`);
+            console.log('=== Team Data Build Complete ===');
             return teamData;
 
         } catch (error) {
-            console.error('Error building team data:', error);
+            console.error('❌ Error building team data:', error);
+            this.logError('Build Team Data', error, {
+                duration: Date.now() - buildStartTime
+            });
+            
+            console.error('⚠️ FALLBACK TRIGGER: Exception during team data build');
+            console.error('💡 Check the errors above for details');
             return null;
         }
     }
@@ -336,6 +566,43 @@ class SportsAPIClient {
     // Clear cache
     clearCache() {
         this.cache = {};
+    }
+
+    // Get error summary for troubleshooting
+    getErrorSummary() {
+        if (this.errorLog.length === 0) {
+            return {
+                hasErrors: false,
+                message: 'No errors recorded'
+            };
+        }
+
+        const errorTypes = {};
+        this.errorLog.forEach(err => {
+            errorTypes[err.errorType] = (errorTypes[err.errorType] || 0) + 1;
+        });
+
+        const mostCommonType = Object.keys(errorTypes).reduce((a, b) => 
+            errorTypes[a] > errorTypes[b] ? a : b
+        );
+
+        const guidance = this.getErrorGuidance(mostCommonType);
+
+        return {
+            hasErrors: true,
+            totalErrors: this.errorLog.length,
+            errorTypes,
+            mostCommonError: mostCommonType,
+            lastError: this.lastErrorDetails,
+            guidance,
+            recentErrors: this.errorLog.slice(-5) // Last 5 errors
+        };
+    }
+
+    // Clear error log
+    clearErrorLog() {
+        this.errorLog = [];
+        this.lastErrorDetails = null;
     }
 }
 

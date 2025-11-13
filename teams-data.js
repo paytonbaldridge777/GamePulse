@@ -250,47 +250,86 @@ const staticTeamsData = {
 let teamsData = { ...staticTeamsData };
 let isLoadingData = false;
 let dataLoadError = null;
+let usingStaticData = true; // Track if we're using static data
 
 // Load team data from APIs
 async function loadTeamsDataFromAPIs() {
     if (isLoadingData) {
+        console.log('[Load Teams] Already loading data, skipping...');
         return; // Already loading
     }
 
     isLoadingData = true;
     dataLoadError = null;
+    console.log('\n=== LOADING TEAM DATA FROM APIs ===');
 
     try {
-        console.log('Attempting to load team data from sports APIs...');
+        console.log('[Load Teams] Step 1: Checking API client availability...');
         
         // Check if apiClient is available
         if (typeof apiClient === 'undefined') {
-            throw new Error('API client not loaded');
+            const error = new Error('API client not loaded');
+            console.error('[Load Teams] ❌ API client is not available');
+            throw error;
         }
+        console.log('[Load Teams] ✓ API client is available');
 
+        console.log('[Load Teams] Step 2: Requesting data from API client...');
         const apiData = await apiClient.buildTeamData();
         
         if (apiData && Object.keys(apiData).length > 0) {
             // Merge API data with static data
             // Prefer API data, but keep static data for teams not in API
+            console.log('[Load Teams] Step 3: Merging API data with static data...');
             teamsData = { ...staticTeamsData };
             
             // Update with API data
+            let apiTeamsAdded = 0;
             Object.keys(apiData).forEach(teamName => {
                 teamsData[teamName] = apiData[teamName];
+                apiTeamsAdded++;
             });
             
-            console.log(`Successfully loaded data for ${Object.keys(apiData).length} teams from APIs`);
+            usingStaticData = false;
+            console.log(`[Load Teams] ✅ SUCCESS: Loaded data for ${apiTeamsAdded} teams from APIs`);
+            console.log(`[Load Teams] Total teams available: ${Object.keys(teamsData).length}`);
+            console.log('=== API DATA LOAD COMPLETE ===\n');
             return true;
         } else {
-            console.warn('No data received from APIs, using static fallback data');
+            console.warn('[Load Teams] ⚠️ API returned no data or empty dataset');
+            console.warn('[Load Teams] 📊 FALLBACK: Using static data');
+            
+            // Log error details if available
+            if (typeof apiClient !== 'undefined' && apiClient.getErrorSummary) {
+                const errorSummary = apiClient.getErrorSummary();
+                if (errorSummary.hasErrors) {
+                    console.warn('[Load Teams] Error Summary:', {
+                        totalErrors: errorSummary.totalErrors,
+                        mostCommonError: errorSummary.mostCommonError,
+                        errorTypes: errorSummary.errorTypes
+                    });
+                    console.warn('[Load Teams] 💡 Troubleshooting:', errorSummary.guidance.message);
+                    console.warn('[Load Teams] Possible Reasons:', errorSummary.guidance.reasons);
+                    console.warn('[Load Teams] Suggested Solutions:', errorSummary.guidance.solutions);
+                }
+            }
+            
             teamsData = { ...staticTeamsData };
+            usingStaticData = true;
+            console.log('=== FALLBACK TO STATIC DATA ===\n');
             return false;
         }
     } catch (error) {
-        console.error('Error loading data from APIs:', error);
+        console.error('[Load Teams] ❌ EXCEPTION: Error loading data from APIs');
+        console.error('[Load Teams] Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
         dataLoadError = error.message;
         teamsData = { ...staticTeamsData };
+        usingStaticData = true;
+        console.warn('[Load Teams] 📊 FALLBACK: Using static data due to exception');
+        console.log('=== FALLBACK TO STATIC DATA ===\n');
         return false;
     } finally {
         isLoadingData = false;
@@ -299,16 +338,42 @@ async function loadTeamsDataFromAPIs() {
 
 // Get current data source
 function getDataSource() {
-    if (JSON.stringify(teamsData) === JSON.stringify(staticTeamsData)) {
-        return 'static';
+    // More accurate check
+    return usingStaticData ? 'static' : 'api';
+}
+
+// Get detailed data source info
+function getDataSourceInfo() {
+    const source = getDataSource();
+    const info = {
+        source,
+        isUsingStatic: usingStaticData,
+        totalTeams: Object.keys(teamsData).length,
+        loadError: dataLoadError
+    };
+
+    // Add error summary if available
+    if (typeof apiClient !== 'undefined' && apiClient.getErrorSummary) {
+        const errorSummary = apiClient.getErrorSummary();
+        if (errorSummary.hasErrors) {
+            info.errorSummary = errorSummary;
+        }
     }
-    return 'api';
+
+    return info;
 }
 
 // Refresh data from APIs
 async function refreshTeamsData() {
+    console.log('\n=== REFRESHING TEAM DATA ===');
     if (typeof apiClient !== 'undefined') {
+        console.log('[Refresh] Clearing API cache...');
         apiClient.clearCache();
+        apiClient.clearErrorLog();
     }
-    return await loadTeamsDataFromAPIs();
+    console.log('[Refresh] Reloading data from APIs...');
+    const result = await loadTeamsDataFromAPIs();
+    console.log('[Refresh] Refresh complete. Success:', result);
+    console.log('=== REFRESH COMPLETE ===\n');
+    return result;
 }
