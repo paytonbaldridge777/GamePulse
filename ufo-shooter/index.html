@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UFO Shooter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+    canvas { display: block; }
+
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #score-panel {
+      position: absolute;
+      top: 24px; left: 50%;
+      transform: translateX(-50%);
+      color: #0ff;
+      font-size: 22px;
+      font-weight: bold;
+      text-shadow: 0 0 12px #0ff, 0 0 24px #0ff;
+      letter-spacing: 3px;
+    }
+
+    #health-bar {
+      position: absolute;
+      bottom: 32px; left: 50%;
+      transform: translateX(-50%);
+      width: 240px;
+    }
+    #health-label {
+      color: #0f8;
+      font-size: 12px;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-align: center;
+      text-shadow: 0 0 8px #0f8;
+    }
+    #health-track {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(0,255,128,0.4);
+      height: 14px;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    #health-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #0f8, #0ff);
+      border-radius: 7px;
+      transition: width 0.2s, background 0.2s;
+    }
+
+    #ammo-panel {
+      position: absolute;
+      bottom: 80px; right: 32px;
+      color: #ff0;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px #ff0;
+    }
+
+    #wave-banner {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff4488;
+      font-size: 48px;
+      font-weight: bold;
+      text-shadow: 0 0 20px #ff4488, 0 0 40px #ff4488;
+      letter-spacing: 6px;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+
+    #crosshair {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px; height: 24px;
+      pointer-events: none;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,0.8);
+    }
+    #crosshair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+    #crosshair::after  { width: 100%; height: 2px; top: 50%; transform: translateY(-50%); }
+
+    #start-screen, #gameover-screen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75);
+      pointer-events: all;
+    }
+    #gameover-screen { display: none; }
+
+    .screen-title {
+      color: #0ff;
+      font-size: 64px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      text-shadow: 0 0 30px #0ff, 0 0 60px #0ff;
+      margin-bottom: 12px;
+    }
+    .screen-subtitle {
+      color: #ff4488;
+      font-size: 22px;
+      letter-spacing: 4px;
+      text-shadow: 0 0 12px #ff4488;
+      margin-bottom: 40px;
+    }
+    .screen-controls {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      line-height: 2;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .btn {
+      background: transparent;
+      border: 2px solid #0ff;
+      color: #0ff;
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      letter-spacing: 4px;
+      padding: 14px 40px;
+      cursor: pointer;
+      text-shadow: 0 0 8px #0ff;
+      box-shadow: 0 0 16px rgba(0,255,255,0.3);
+      transition: all 0.2s;
+      pointer-events: all;
+    }
+    .btn:hover {
+      background: rgba(0,255,255,0.15);
+      box-shadow: 0 0 30px rgba(0,255,255,0.6);
+    }
+    #final-score {
+      color: #ff0;
+      font-size: 32px;
+      letter-spacing: 4px;
+      text-shadow: 0 0 16px #ff0;
+      margin-bottom: 32px;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="score-panel">SCORE: <span id="score-val">0</span> &nbsp;|&nbsp; WAVE: <span id="wave-val">1</span></div>
+  <div id="health-bar">
+    <div id="health-label">HULL INTEGRITY</div>
+    <div id="health-track"><div id="health-fill"></div></div>
+  </div>
+  <div id="ammo-panel">AMMO: <span id="ammo-val">∞</span></div>
+  <div id="crosshair"></div>
+  <div id="wave-banner"></div>
+
+  <div id="start-screen">
+    <div class="screen-title">UFO SHOOTER</div>
+    <div class="screen-subtitle">DEFEND EARTH</div>
+    <div class="screen-controls">
+      WASD / ARROWS — Move Tank<br>
+      MOUSE — Aim Turret<br>
+      LEFT CLICK / SPACE — Fire<br>
+      R — Restart (when dead)
+    </div>
+    <button class="btn" id="start-btn">LAUNCH GAME</button>
+  </div>
+
+  <div id="gameover-screen">
+    <div class="screen-title">GAME OVER</div>
+    <div id="final-score">SCORE: <span id="final-score-val">0</span></div>
+    <button class="btn" id="restart-btn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
