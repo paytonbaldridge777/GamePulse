@@ -8,6 +8,11 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
     canvas { display: block; }
+    #err {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #000; color: #f44; font-size: 16px; padding: 40px;
+      white-space: pre-wrap; z-index: 9999; overflow: auto; line-height: 1.6;
+    }
 
     #hud {
       position: fixed;
@@ -156,6 +161,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="err"></div>
 
 <div id="hud">
   <div id="score-panel">SCORE: <span id="score-val">0</span> &nbsp;|&nbsp; WAVE: <span id="wave-val">1</span></div>
@@ -188,6 +194,27 @@
 
 <script src="https://unpkg.com/three@0.165.0/build/three.min.js"></script>
 <script>
+// Show any JS error on screen so it's visible without opening dev tools
+function showErr(msg) {
+  var d = document.getElementById('err');
+  d.style.display = 'block';
+  d.textContent = 'ERROR — copy this and send it:\n\n' + msg;
+}
+window.onerror = function(msg, src, line, col, err) {
+  showErr((err ? err.stack : msg) + '\n\nFile: ' + src + '\nLine: ' + line);
+  return true;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  showErr('Unhandled promise: ' + e.reason);
+});
+
+// Verify Three.js loaded before running game code
+if (typeof THREE === 'undefined') {
+  showErr('THREE.js failed to load from the CDN.\n\nThis game needs an internet connection to download Three.js on first open.\n\nMake sure you are connected to the internet, then refresh the page.');
+}
+</script>
+<script>
+if (typeof THREE !== 'undefined') {
 // ─── Constants ───────────────────────────────────────────────────────────────
 var GROUND_SIZE    = 120;
 var TANK_SPEED     = 8;
@@ -883,6 +910,7 @@ document.getElementById('start-btn').addEventListener('click', function() {
   requestAnimationFrame(function(ts) { lastTime = ts; loop(ts); });
 });
 document.getElementById('restart-btn').addEventListener('click', restartGame);
+} // end THREE defined check
 </script>
 </body>
 </html>
